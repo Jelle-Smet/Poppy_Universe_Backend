@@ -1,0 +1,30 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "<<<<<<< HEAD\r # Poppy Universe Backend\r =======\r # Poppy_Universe_Backend\r Backend API and core server logic for the Poppy Universe project. Handles data, authentication, and application logic.\r >>>>>>> 7c878bd125318d98cf1d7f556383c0a01f14ddb1",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jelle-Smet/Poppy_Universe_Backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Jelle-Smet/Poppy_Universe_Backend/issues"
+  },
+  "homepage": "https://github.com/Jelle-Smet/Poppy_Universe_Backend#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  } 
+}
