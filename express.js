@@ -1,26 +1,35 @@
-// index.js
+// express.js
 const express = require('express');
 const cors = require('cors');
-// Import bcryptjs here so it's installed (optional, but good practice)
-const bcrypt = require('bcryptjs'); // Will be used in userController
 require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// default route
+// Status route
+app.use('/status', require('./Routes/Status'));
+
+// Default route
 app.get('/', (req, res) => {
-  res.send('Backend is running!');
+    res.send('Backend is running!');
 });
 
-// ⭐ Add your routes here
+// Planets
 app.use('/planets', require('./Routes/Planets'));
 
+// stars
+app.use('/api/stars', require('./Routes/Stars'));
 
-// 🔑 NEW: User authentication routes
-app.use('/api', require('./Routes/Users')); 
+// Interactions
+app.use('/api/interactions', require('./Routes/Interactions'));
 
-// Start server
+// Likes
+app.use('/api/likes', require('./Routes/Like'));
+
+
+// 🔑 Auth routes
+app.use('/api', require('./Routes/Users'));
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

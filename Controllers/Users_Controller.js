@@ -1,14 +1,14 @@
-// controllers/userController.js
-const db = new (require('../Classes/database'))(); // Adjust path if needed
-const bcrypt = require('bcryptjs');
+// controllers/Users_Controller.js
 
-// Helper function to generate a secure random token (e.g., for auth)
-const generateToken = () => {
-    return require('crypto').randomBytes(64).toString('hex');
-};
+require('dotenv').config();
+const db = new (require('../Classes/database'))();
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET;
 
 /**
- * 🛰️ REGISTRATION / SIGNUP HANDLER (POST /api/signup)
+ * 🛰️ SIGNUP (POST /api/signup)
  */
 exports.signup = async (req, res) => {
     const { User_FN, User_LN, User_Username, User_Email, User_Password } = req.body;
@@ -17,110 +17,137 @@ exports.signup = async (req, res) => {
         return res.status(400).json({ message: "All required explorer data missing." });
     }
 
-    // --- LOGIC: Calculate final username ---
-    const finalUsername = User_Username?.trim() 
-        ? User_Username.trim() 
+    if (User_Password.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters long." });
+    }
+
+    // Generate username
+    const finalUsername = User_Username?.trim()
+        ? User_Username.trim()
         : `${User_FN.trim()} ${User_LN.trim()}`;
 
-    if (!finalUsername) {
-        return res.status(400).json({ message: "Username could not be generated from First Name and Last Name." });
-    }
-    // ---------------------------------------
-
     try {
-        // 1. Check if user already exists
+        // Check email uniqueness
         const existingUser = await db.getQuery(
-            "SELECT * FROM Users WHERE User_Email = ?",
+            "SELECT User_ID FROM Users WHERE User_Email = ?",
             [User_Email]
         );
-        
+
         if (existingUser.length > 0) {
-            return res.status(409).json({ message: "Email already in use. Try logging in." });
+            return res.status(409).json({ message: "Email already in use." });
         }
 
-        // 2. Hash the password
-        const hashedPassword = await bcrypt.hash(User_Password, 10); 
+        const hashedPassword = await bcrypt.hash(User_Password, 10);
 
-        // 3. Insert new user into the database
         const sql = `
-            INSERT INTO Users (User_FN, User_LN, User_Name, User_Email, User_Password) 
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO Users 
+            (User_FN, User_LN, User_Name, User_Email, User_Password, User_Created)
+            VALUES (?, ?, ?, ?, ?, NOW())
         `;
-        const params = [
-            User_FN, 
-            User_LN, 
-            finalUsername, 
-            User_Email, 
+
+        const result = await db.getQuery(sql, [
+            User_FN,
+            User_LN,
+            finalUsername,
+            User_Email,
             hashedPassword
-        ];
+        ]);
 
-        // FIX APPLIED: Changed db.runQuery to db.getQuery
-        const result = await db.getQuery(sql, params); 
-
-        // For simplicity, we'll use the new ID as the Owner_ID
-        const newUserId = result.insertId; 
-        
-        // Return success
-        res.status(201).json({ 
-            message: `New explorer "${finalUsername}" successfully registered.`,
-            userId: newUserId 
+        res.status(201).json({
+            message: `Explorer "${finalUsername}" registered successfully.`,
+            userId: result.insertId
         });
 
     } catch (err) {
         console.error("Signup Error:", err);
-        res.status(500).json({ message: "Hyperspace anomaly during registration. Try again." });
+        res.status(500).json({ message: "Registration failed due to a cosmic anomaly." });
     }
 };
 
 /**
- * 👽 LOGIN HANDLER (POST /api/login)
- * (No changes needed here, as it already uses db.getQuery)
+ * 👽 LOGIN (POST /api/login)
  */
 exports.login = async (req, res) => {
     const { User_Email, User_Password } = req.body;
 
     if (!User_Email || !User_Password) {
-        return res.status(400).json({ message: "Please provide both email and encryption key." });
+        return res.status(400).json({ message: "Email and password required." });
     }
 
     try {
-        // 1. Fetch user by email
         const users = await db.getQuery(
             "SELECT * FROM Users WHERE User_Email = ?",
             [User_Email]
         );
-        
-        const user = users[0];
 
-        // 2. Check if user exists
+        const user = users[0];
         if (!user) {
             return res.status(401).json({ message: "Invalid credentials." });
         }
 
-        // 3. Compare the provided password with the stored hash
-        const isMatch = await bcrypt.compare(User_Password, user.User_Password); // 
-
+        const isMatch = await bcrypt.compare(User_Password, user.User_Password);
         if (!isMatch) {
             return res.status(401).json({ message: "Invalid credentials." });
         }
 
-        // 4. Authentication successful: Generate Token and return user details
-        const token = generateToken();
+        const token = jwt.sign(
+            {
+                id: user.User_ID,
+                username: user.User_Name
+            },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
 
-        // Return the data your Vue component expects
         res.json({
-            message: "Login successful! Welcome aboard, Explorer.",
-            token: token,
+            message: "Login successful.",
+            token,
             user: {
                 id: user.User_ID,
-                username: user.User_Name, 
-                email: user.User_Email,
-                ownerId: user.User_ID 
+                username: user.User_Name,
+                firstName: user.User_FN,
+                lastName: user.User_LN,
+                email: user.User_Email
             }
         });
 
     } catch (err) {
         console.error("Login Error:", err);
-        res.status(500).json({ message: "The cosmic winds say try again." });
+        res.status(500).json({ message: "Login failed. Try again." });
+    }
+};
+
+/**
+ * 👤 ACCOUNT DETAILS (GET /api/account)
+ */
+exports.getAccountDetails = async (req, res) => {
+    const userId = req.userId;
+
+    try {
+        const users = await db.getQuery(
+            `
+            SELECT User_FN, User_LN, User_Name, User_Email, User_Created
+            FROM Users
+            WHERE User_ID = ?
+            `,
+            [userId]
+        );
+
+        const user = users[0];
+        if (!user) {
+            return res.status(404).json({ message: "Explorer not found." });
+        }
+
+        res.json({
+            username: user.User_Name,
+            firstName: user.User_FN,
+            lastName: user.User_LN,
+            email: user.User_Email,
+            memberSince: new Date(user.User_Created).toLocaleDateString()
+        });
+
+    } catch (err) {
+        console.error("Account Error:", err);
+        res.status(500).json({ message: "Failed to retrieve account data." });
     }
 };
