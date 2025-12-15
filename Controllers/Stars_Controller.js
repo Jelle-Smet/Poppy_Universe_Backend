@@ -35,7 +35,7 @@ const getStarById = async (req, res) => {
               s.Star_RV_Category, s.Star_Evol_Category,
               u.User_Name, u.User_FN, u.User_LN
        FROM Stars s
-       JOIN Users u ON s.Owner_ID = u.User_ID
+       LEFT JOIN Users u ON s.Owner_ID = u.User_ID
        WHERE s.Star_ID = ?`,
       [starId]
     );
@@ -54,9 +54,67 @@ const getStarById = async (req, res) => {
   }
 };
 
+// ---------------- GET STAR ENCYCLOPEDIA (PAGINATED) ----------------
+const getStarEncyclopedia = async (req, res) => {
+  try {
+    // params
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200); // hard cap
+    const offset = parseInt(req.query.offset) || 0;
+    const typeFilter = req.query.type || null; // optional: O, B, A, ...
+    const randomize = req.query.random === 'true'; // optional: true/false
+
+    // build query
+    let query = `
+      SELECT 
+        s.Star_ID,
+        s.Star_Name,
+        s.Star_Source,
+        s.Star_SpType,
+        s.Star_Evol_Category,
+        s.Star_Age,
+        s.Star_Teff,
+        s.Star_Luminosity,
+        s.Star_Mass,
+        s.Star_Radius,
+        s.Star_Distance
+      FROM Stars s
+    `;
+    
+    const params = [];
+
+    if (typeFilter) {
+      query += ` WHERE s.Star_SpType = ?`;
+      params.push(typeFilter);
+    }
+
+    if (randomize) {
+      query += ` ORDER BY RAND()`;
+    } else {
+      query += ` ORDER BY s.Star_ID`;
+    }
+
+    query += ` LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    // run query
+    const stars = await db.getQuery(query, params);
+
+    return res.json({
+      stars,
+      limit,
+      offset,
+      count: stars.length
+    });
+
+  } catch (err) {
+    console.error('Error fetching star encyclopedia:', err);
+    return res.status(500).json({ message: 'Failed to fetch star encyclopedia' });
+  }
+};
 
 // ---------------- EXPORT ----------------
 module.exports = {
   getMyStars,
   getStarById,
+  getStarEncyclopedia,
 };

@@ -27,6 +27,8 @@ app.use('/api/interactions', require('./Routes/Interactions'));
 // Likes
 app.use('/api/likes', require('./Routes/Like'));
 
+// Planets
+app.use('/api/planets', require('./Routes/Planets'));
 
 // 🔑 Auth routes
 app.use('/api', require('./Routes/Users'));
