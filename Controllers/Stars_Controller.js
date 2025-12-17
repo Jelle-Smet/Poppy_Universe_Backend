@@ -57,9 +57,13 @@ const getStarById = async (req, res) => {
 // ---------------- GET STAR ENCYCLOPEDIA (PAGINATED) ----------------
 const getStarEncyclopedia = async (req, res) => {
   try {
-    // params
-    const limit = Math.min(parseInt(req.query.limit) || 50, 200); // hard cap
-    const offset = parseInt(req.query.offset) || 0;
+    // Parse and sanitize params
+    let limit = parseInt(req.query.limit) || 50;
+    limit = Math.min(Math.max(limit, 1), 200); // between 1 and 200
+
+    let offset = parseInt(req.query.offset) || 0;
+    offset = Math.max(offset, 0); // cannot be negative
+
     const typeFilter = req.query.type || null; // optional: O, B, A, ...
     const randomize = req.query.random === 'true'; // optional: true/false
 
@@ -79,7 +83,7 @@ const getStarEncyclopedia = async (req, res) => {
         s.Star_Distance
       FROM Stars s
     `;
-    
+
     const params = [];
 
     if (typeFilter) {
@@ -93,8 +97,8 @@ const getStarEncyclopedia = async (req, res) => {
       query += ` ORDER BY s.Star_ID`;
     }
 
-    query += ` LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
+    // Interpolate limit and offset directly (can't be parameterized)
+    query += ` LIMIT ${limit} OFFSET ${offset}`;
 
     // run query
     const stars = await db.getQuery(query, params);
@@ -111,6 +115,7 @@ const getStarEncyclopedia = async (req, res) => {
     return res.status(500).json({ message: 'Failed to fetch star encyclopedia' });
   }
 };
+
 
 // ---------------- EXPORT ----------------
 module.exports = {

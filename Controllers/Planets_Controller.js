@@ -45,8 +45,13 @@ exports.getPlanetById = async (req, res) => {
 // ---------------- GET PLANET ENCYCLOPEDIA (PAGINATED) ----------------
 exports.getPlanetEncyclopedia = async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit) || 50, 200); // hard cap
-    const offset = parseInt(req.query.offset) || 0;
+    // Parse and sanitize params
+    let limit = parseInt(req.query.limit) || 50;
+    limit = Math.min(Math.max(limit, 1), 200); // between 1 and 200
+
+    let offset = parseInt(req.query.offset) || 0;
+    offset = Math.max(offset, 0); // cannot be negative
+
     const includeSun = req.query.includeSun === 'true'; // optional: include Sun
 
     let query = `
@@ -63,15 +68,13 @@ exports.getPlanetEncyclopedia = async (req, res) => {
       FROM Planets
     `;
 
-    const params = [];
     if (!includeSun) {
       query += ` WHERE Planet_Type != 'Star'`;
     }
 
-    query += ` ORDER BY Planet_ID LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
+    query += ` ORDER BY Planet_ID LIMIT ${limit} OFFSET ${offset}`;
 
-    const planets = await db.getQuery(query, params);
+    const planets = await db.getQuery(query, []); // no params for LIMIT/OFFSET
 
     return res.json({
       planets,
@@ -84,4 +87,3 @@ exports.getPlanetEncyclopedia = async (req, res) => {
     return res.status(500).json({ message: 'Failed to fetch planet encyclopedia' });
   }
 };
-

@@ -75,7 +75,54 @@ const getLikeStatus = async (req, res) => {
   }
 };
 
+// ---------------- GET USER LIKES (GROUPED) ----------------
+const getUserLikes = async (req, res) => {
+  try {
+    const userId = req.userId;
+    if (!userId) return res.status(400).json({ message: 'User ID required' });
+
+    // -------- STARS --------
+    const stars = await db.getQuery(`
+      SELECT s.Star_ID AS id, s.Star_Name AS name, s.Star_SpType AS spectralType, s.Star_Luminosity AS luminosity
+      FROM Stars s
+      INNER JOIN Liked_Objects l
+        ON l.Object_Reference_ID = s.Star_ID
+      WHERE l.User_ID = ? AND l.Object_Type = 'Star'
+    `, [userId]);
+
+    // -------- PLANETS --------
+    const planets = await db.getQuery(`
+      SELECT p.Planet_ID AS id, p.Planet_Name AS name, p.Planet_Color AS color, p.Planet_Magnitude AS magnitude
+      FROM Planets p
+      INNER JOIN Liked_Objects l
+        ON l.Object_Reference_ID = p.Planet_ID
+      WHERE l.User_ID = ? AND l.Object_Type = 'Planet'
+    `, [userId]);
+
+    // -------- MOONS --------
+    const moons = await db.getQuery(`
+      SELECT m.Moon_ID AS id, m.Moon_Name AS name, m.Parent_Planet_Name AS parent, m.Moon_Color AS color
+      FROM Moons m
+      INNER JOIN Liked_Objects l
+        ON l.Object_Reference_ID = m.Moon_ID
+      WHERE l.User_ID = ? AND l.Object_Type = 'Moon'
+    `, [userId]);
+
+    return res.json({
+      stars,
+      planets,
+      moons
+    });
+
+  } catch (err) {
+    console.error('Error fetching user likes:', err);
+    return res.status(500).json({ message: 'Failed to fetch user likes' });
+  }
+};
+
 module.exports = {
   toggleLike,
-  getLikeStatus
+  getLikeStatus,
+  getUserLikes
 };
+

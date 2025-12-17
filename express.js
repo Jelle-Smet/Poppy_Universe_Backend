@@ -15,9 +15,6 @@ app.get('/', (req, res) => {
     res.send('Backend is running!');
 });
 
-// Planets
-app.use('/planets', require('./Routes/Planets'));
-
 // stars
 app.use('/api/stars', require('./Routes/Stars'));
 
@@ -29,6 +26,9 @@ app.use('/api/likes', require('./Routes/Like'));
 
 // Planets
 app.use('/api/planets', require('./Routes/Planets'));
+
+// Moons
+app.use('/api/moons', require('./Routes/Moons'));
 
 // 🔑 Auth routes
 app.use('/api', require('./Routes/Users'));
