@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const starsController = require('../Controllers/Stars_Controller');
-const { protect } = require('../middleware/Auth');
+const { protect } = require('../Middleware/Auth');
 
 // ---------------- ENCYCLOPEDIA ----------------
 router.get('/encyclopedia',protect, starsController.getStarEncyclopedia);

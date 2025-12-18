@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const planetsController = require('../Controllers/Planets_Controller');
-const { protect } = require('../middleware/Auth');
+const { protect } = require('../Middleware/Auth');
 
 // ---------------- PLANET ENCYCLOPEDIA ----------------
 router.get('/encyclopedia', protect, planetsController.getPlanetEncyclopedia);

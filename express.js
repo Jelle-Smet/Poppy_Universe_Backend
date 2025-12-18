@@ -30,6 +30,12 @@ app.use('/api/planets', require('./Routes/Planets'));
 // Moons
 app.use('/api/moons', require('./Routes/Moons'));
 
+// ML 
+app.use('/api/ml', require('./Routes/ML'));
+
+// Engine
+app.use('/api/engine', require('./Routes/Engine'));
+
 // 🔑 Auth routes
 app.use('/api', require('./Routes/Users'));
 

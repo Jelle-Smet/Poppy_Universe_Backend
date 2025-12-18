@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 
 const userController = require('../Controllers/Users_Controller');
-const { protect } = require('../middleware/Auth'); // Importing 'protect'
+const { protect } = require('../Middleware/Auth'); // Importing 'protect'
 
 // Public auth routes (No token needed)
 router.post('/signup', userController.signup);

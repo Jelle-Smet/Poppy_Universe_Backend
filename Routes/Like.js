@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const likeController = require('../Controllers/Like_Controller');
-const { protect } = require('../middleware/Auth');
+const { protect } = require('../Middleware/Auth');
 
 // Toggle like/unlike for a star, planet, or moon
 router.post('/toggle', protect, likeController.toggleLike);

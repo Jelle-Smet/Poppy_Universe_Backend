@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const interactionsController = require('../Controllers/Interactions_Controller');
-const { protect } = require('../middleware/Auth');
+const { protect } = require('../Middleware/Auth');
 
 // Protected routes
 router.post('/rate', protect, interactionsController.rateObject);

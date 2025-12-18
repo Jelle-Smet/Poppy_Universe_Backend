@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const moonsController = require('../Controllers/Moons_Controller');
-const { protect } = require('../middleware/Auth');
+const { protect } = require('../Middleware/Auth');
 
 // ---------------- MOON ENCYCLOPEDIA ----------------
 router.get('/encyclopedia', protect, moonsController.getMoonEncyclopedia);
