@@ -151,3 +151,64 @@ exports.getAccountDetails = async (req, res) => {
         res.status(500).json({ message: "Failed to retrieve account data." });
     }
 };
+
+/**
+ * 🛠️ UPDATE PROFILE (PUT /api/update-profile)
+ */
+exports.updateProfile = async (req, res) => {
+    const userId = req.userId; // Provided by your auth middleware
+    const { User_FN, User_LN, User_Name, User_Email, User_Password } = req.body;
+
+    try {
+        // 1. Fetch current user to verify existence
+        const users = await db.getQuery("SELECT * FROM Users WHERE User_ID = ?", [userId]);
+        const user = users[0];
+
+        if (!user) {
+            return res.status(404).json({ message: "Explorer not found." });
+        }
+
+        // 2. Prepare dynamic updates
+        let updates = [];
+        let params = [];
+
+        if (User_FN) { updates.push("User_FN = ?"); params.push(User_FN); }
+        if (User_LN) { updates.push("User_LN = ?"); params.push(User_LN); }
+        if (User_Name) { updates.push("User_Name = ?"); params.push(User_Name); }
+        
+        // Handle Email (check uniqueness if changing)
+        if (User_Email && User_Email !== user.User_Email) {
+            const existing = await db.getQuery("SELECT User_ID FROM Users WHERE User_Email = ? AND User_ID != ?", [User_Email, userId]);
+            if (existing.length > 0) {
+                return res.status(409).json({ message: "This email is already claimed by another explorer." });
+            }
+            updates.push("User_Email = ?");
+            params.push(User_Email);
+        }
+
+        // Handle Password hashing
+        if (User_Password) {
+            if (User_Password.length < 8) {
+                return res.status(400).json({ message: "New password must be at least 8 characters." });
+            }
+            const hashedPassword = await bcrypt.hash(User_Password, 10);
+            updates.push("User_Password = ?");
+            params.push(hashedPassword);
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ message: "No changes provided." });
+        }
+
+        // 3. Execute Update
+        params.push(userId);
+        const sql = `UPDATE Users SET ${updates.join(", ")} WHERE User_ID = ?`;
+        await db.getQuery(sql, params);
+
+        res.json({ message: "Profile updated successfully! ✨" });
+
+    } catch (err) {
+        console.error("Update Error:", err);
+        res.status(500).json({ message: "Failed to update profile due to a database anomaly." });
+    }
+};

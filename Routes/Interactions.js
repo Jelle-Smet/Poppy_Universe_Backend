@@ -6,5 +6,6 @@ const { protect } = require('../middleware/Auth');
 // Protected routes
 router.post('/rate', protect, interactionsController.rateObject);
 router.post('/like', protect, interactionsController.likeObject);
+router.get('/user-interactions', protect, interactionsController.getUserInteractions)
 
 module.exports = router;
