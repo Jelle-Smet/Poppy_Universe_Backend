@@ -14,4 +14,8 @@ router.get('/l2', protect, engineController.getLayer2Data);
 router.get('/l3', protect, engineController.getLayer3Data);
 router.get('/l4', protect, engineController.getLayer4Data);
 
+// runners
+router.post('/run-l1', protect, engineController.runLayer1Full);
+
+
 module.exports = router;
