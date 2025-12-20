@@ -202,36 +202,71 @@ exports.getUserConfig = async (req, res) => {
  */
 exports.getLayer2Data = async (req, res) => {
     try {
-        // Pass null for req and res to trigger the internal 'return'
+        // Pass null for req and res to mlController to trigger internal return
         const trendingData = await mlController.runLayer2Model(null, null);
         
-        res.json({
-            success: true,
-            source: "ML_Controller_Internal",
-            count: trendingData?.length || 0,
-            data: trendingData
-        });
+        // ✨ THE FIX: Only call .json() if 'res' actually exists!
+        if (res) {
+            return res.json({
+                success: true,
+                source: "ML_Controller_Internal",
+                count: trendingData?.length || 0,
+                data: trendingData
+            });
+        }
+
+        // If res is null, we just return the data object so executeEngine can use it
+        return { success: true, data: trendingData };
+
     } catch (err) {
         console.error("Layer 2 Engine Call Error:", err);
-        res.status(500).json({ success: false, error: err.message });
+        if (res) {
+            return res.status(500).json({ success: false, error: err.message });
+        }
+        throw err; // Throw so executeEngine knows something went wrong
     }
 };
 
 /**
  * 🧬 GET LAYER 3 (COLLABORATIVE FILTERING)
+ * Updated to be "Hybrid" so it doesn't crash the engine.
  */
 exports.getLayer3Data = async (req, res) => {
     try {
-        const l3Data = await mlController.runLayer3Model(null, null);
+        // 1. Handle both ID-only calls and standard req/res calls
+        // If 'req' is just an ID string/number, use it. Otherwise, look for req.userId.
+        const userId = (typeof req !== 'object') ? req : (req.userId || req.body?.userId);
+
+        if (!userId) {
+            throw new Error("User ID is required for Layer 3 personalization.");
+        }
+
+        // 2. Run the model
+        const l3Data = await mlController.runLayer3Model(userId, null);
         
-        res.json({
-            success: true,
-            count: l3Data?.length || 0,
-            data: l3Data
-        });
+        // ✨ THE HYBRID CHECK: Only call .json() if 'res' actually exists!
+        if (res) {
+            return res.json({
+                success: true,
+                count: l3Data?.length || 0,
+                data: l3Data
+            });
+        }
+
+        // 3. Internal Return: If res is null, we just return the data object
+        // This is what executeEngine will receive.
+        return { success: true, data: l3Data };
+
     } catch (err) {
         console.error("Layer 3 Engine Call Error:", err);
-        res.status(500).json({ success: false, error: err.message });
+        
+        // Only try to use res.status if res exists
+        if (res) {
+            return res.status(500).json({ success: false, error: err.message });
+        }
+        
+        // Throw so executeEngine's try/catch can handle it
+        throw err; 
     }
 };
 
@@ -253,41 +288,148 @@ exports.getLayer4Data = async (req, res) => {
     }
 };
 
+
+// --------------------------------------
+// Run Engine Endpoints
+//---------------------------------------
+
+// Helper to safely extract only the number from a string like "2.5%" or "Boosted: 10"
+const safeParseFloat = (val) => {
+    if (!val) return 0;
+    // Regex: find the first sequence of numbers and optional decimal point
+    const match = String(val).match(/[-+]?([0-9]*\.[0-9]+|[0-9]+)/);
+    return match ? parseFloat(match[0]) : 0;
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 🛠️ MAPPING HELPERS (Flattens C# nested data into clean JSON)
+// ═══════════════════════════════════════════════════════════════
+const mapStarResult = (s) => ({
+    Star_ID: s.Star.Id,
+    Star_Name: s.Star.Name,
+    Star_Source: s.Star.Source,
+    Star_SpType: s.Star.SpectralType,
+    Star_Evol_Category: s.Star.Star_Evol_Category || "unknown",
+    Star_Age: s.Star.Age,
+    Star_Teff: s.Star.Teff,
+    Star_Luminosity: s.Star.Luminosity,
+    Star_Mass: s.Star.Mass,
+    Star_Radius: s.Star.Radius,
+    Star_Distance: s.Star.Distance,
+    // Positioning Data
+    Altitude: s.Altitude, 
+    Azimuth: s.Azimuth,
+    Is_Visible: s.IsVisible,
+    // Engine Results
+    Match_Score: s.Score,
+    Match_Percentage: s.MatchPercentage,
+    // 📈 Boost Data
+    Boost_Amount_Pct: safeParseFloat(s.BoostDescription),
+    Weather_Visibility_Chance: s.VisibilityChance,
+    Weather_Explanation: s.ChanceReason
+});
+
+const mapPlanetResult = (p) => ({
+    Planet_ID: p.Planet.Id,
+    Planet_Name: p.Planet.Name,
+    Planet_Color: p.Planet.Color,
+    Planet_Distance_From_Sun: p.Planet.DistanceFromSun,
+    Planet_Magnitude: p.Planet.Magnitude,
+    Planet_Type: p.Planet.Type,
+    Planet_Diameter: p.Planet.Diameter,
+    Planet_Number_of_Moons: p.Planet.NumberOfMoons,
+    Planet_Mass: p.Planet.Mass,
+    // Positioning Data
+    Altitude: p.Altitude,
+    Azimuth: p.Azimuth,
+    Is_Visible: p.IsVisible,
+    // Engine Results
+    Match_Score: p.Score,
+    Match_Percentage: p.MatchPercentage,
+    // 📈 Boost Data
+    Boost_Amount_Pct: safeParseFloat(p.BoostDescription),
+    Weather_Visibility_Chance: p.VisibilityChance,
+    Weather_Explanation: p.ChanceReason
+});
+
+const mapMoonResult = (m) => ({
+    Moon_ID: m.Moon.Id,
+    Moon_Name: m.Moon.Name,
+    Parent_Planet_Name: m.Parent,
+    Moon_Color: m.Moon.Color,
+    Moon_Diameter: m.Moon.Diameter,
+    Moon_Mass: m.Moon.Mass,
+    // Positioning Data
+    Altitude: m.Altitude,
+    Azimuth: m.Azimuth,
+    Is_Visible: m.IsVisible,
+    // Engine Results
+    Match_Score: m.Score,
+    Match_Percentage: m.MatchPercentage,
+    // 📈 Boost Data
+    Boost_Amount_Pct: safeParseFloat(m.BoostDescription),
+    Weather_Visibility_Chance: m.VisibilityChance,
+    Weather_Explanation: m.ChanceReason
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 🌌 THE MASTER ENGINE EXECUTOR
+// ═══════════════════════════════════════════════════════════════
+
 /**
- * 🌌 RUN LAYER 1 ENGINE
- * Gathers data, runs the C# Recommendation Engine, and flattens the results.
+ * 🚀 MASTER ENGINE EXECUTOR
+ * Layers: L1 (Base), L2 (Trending), L3 (Matrix Factorization),
  */
-exports.runLayer1Full = async (req, res) => {
+const executeEngine = async (req, res, layers = { l2: false, l3: false, l4: false, l5: false }) => {
     try {
-        // 1️⃣ Gather all data from your existing endpoints
+        // 1️⃣ Gather Base Data (L1 Fuel)
         const poolData = await exports.getCelestialPool(null, null); 
         const userConfig = await exports.getUserConfig(req, null); 
 
-        // 2️⃣ Combine into the "Big Mac" Payload
+        // ✨ GLOBAL ID: Define it here so all layers can use it
+        const userId = userConfig.data?.ID;
+
+        if (!userId) {
+            return res.status(401).json({ success: false, message: "Unauthorized: No explorer ID found." });
+        }
+
+        // 2️⃣ Build Payload Shell
         const enginePayload = {
             User: userConfig.data,
-            Pool: poolData.data
+            Pool: poolData.data,
+            Config: layers, 
+            Layer2Data: null,
+            Layer3Data: null,
+            Layer4Data: null // ✨ Placeholder for Layer 4
         };
 
-        // ==========================================================
-        // 🚀 DEPLOYMENT CHANGE START
-        // ==========================================================
-        /* Once deployed (e.g., on Azure or AWS), you can't "spawn" a local .exe 
-           easily from a web server. You will replace the "Spawn C# Engine" 
-           section below with an HTTP request to your hosted Engine API:
+        // 📈 LAYER 2: TRENDING DATA
+        if (layers.l2) {
+            const trendingResponse = await exports.getLayer2Data(null, null);
+            enginePayload.Layer2Data = trendingResponse.data;
+        }
 
-           const response = await axios.post(process.env.ENGINE_SERVICE_URL, enginePayload);
-           return res.json({
-               success: true,
-               results: response.data.results // Assuming the hosted engine returns clean JSON
-           });
-        */
-        // ==========================================================
+        // 🧬 LAYER 3: PERSONALIZATION MATRIX
+        if (layers.l3) {
+            // Pass the globally defined userId
+            const matrixResponse = await exports.getLayer3Data(userId);
+            
+            // Ensure C# gets a single object, not an array
+            enginePayload.Layer3Data = Array.isArray(matrixResponse.data) 
+                ? matrixResponse.data[0] 
+                : matrixResponse.data;
+        }
 
-        // 3️⃣ Spawn C# Engine (LOCAL ONLY)
+        // 🕒 LAYER 4: USER HISTORY / DISCOVERY
+        if (layers.l4) {
+            console.log(`Layer 4 requested for User: ${userId}`);
+            // This is where you'll call your L4 data fetcher
+            // const historyResponse = await exports.getLayer4Data(userId);
+            // enginePayload.Layer4Data = historyResponse.data;
+        }
+
+        // 3️⃣ Spawn C# Engine
         const enginePath = path.resolve(__dirname, '../../../Recommendation_Engine/Poppy_Universe_Engine/bin/Debug/net8.0/Poppy_Universe_Engine.exe');
-        
-        // Note: On some Linux servers, you might need to spawn 'mono' or use 'dotnet'
         const engine = spawn(enginePath);
 
         let output = '';
@@ -295,25 +437,17 @@ exports.runLayer1Full = async (req, res) => {
 
         engine.on('error', (err) => {
             console.error("❌ FAILED TO START ENGINE:", err);
-            if (!res.headersSent) {
-                res.status(500).json({ error: "Failed to start C# engine.", details: err.message });
-            }
+            if (!res.headersSent) res.status(500).json({ error: "Failed to start C# engine." });
         });
 
-        engine.stdout.on('data', (data) => {
-            output += data.toString();
-            console.log("C# Output Chunk Received"); 
-        });
-
-        engine.stderr.on('data', (data) => {
-            engineStderr += data.toString();
-        });
+        engine.stdout.on('data', (data) => { output += data.toString(); });
+        engine.stderr.on('data', (data) => { engineStderr += data.toString(); });
 
         // 4️⃣ Pipe the data to C# via stdin
         engine.stdin.write(JSON.stringify(enginePayload));
         engine.stdin.end();
 
-        // 5️⃣ On finish, process the raw output
+        // 5️⃣ On finish, clean up and send results
         engine.on('close', (code) => {
             if (code !== 0) {
                 return res.status(500).json({ error: "Engine crashed", details: engineStderr });
@@ -321,79 +455,46 @@ exports.runLayer1Full = async (req, res) => {
 
             try {
                 const marker = "---JSON_START---";
-                if (!output.includes(marker)) {
-                    throw new Error("Could not find JSON marker in C# output.");
-                }
+                if (!output.includes(marker)) throw new Error("JSON marker missing.");
 
                 const jsonPart = output.substring(output.indexOf(marker) + marker.length).trim();
-                const finalResults = JSON.parse(jsonPart);
-
-                // ✨ FLATTEN & CLEAN RESULTS (The mapping you requested)
-                const cleanStars = (finalResults.Stars || []).map(s => ({
-                    Star_ID: s.Star.Id,
-                    Star_Name: s.Star.Name,
-                    Star_Source: s.Star.Source,
-                    Star_SpType: s.Star.SpectralType,
-                    Star_Evol_Category: s.Star.Star_Evol_Category || "unknown",
-                    Star_Age: s.Star.Age,
-                    Star_Teff: s.Star.Teff,
-                    Star_Luminosity: s.Star.Luminosity,
-                    Star_Mass: s.Star.Mass,
-                    Star_Radius: s.Star.Radius,
-                    Star_Distance: s.Star.Distance,
-                    Match_Score: s.Score,
-                    Match_Percentage: s.MatchPercentage,
-                    Weather_Visibility_Chance: s.VisibilityChance,
-                    Weather_Explanation: s.ChanceReason
-                }));
-
-                const cleanPlanets = (finalResults.Planets || []).map(p => ({
-                    Planet_ID: p.Planet.Id,
-                    Planet_Name: p.Planet.Name,
-                    Planet_Color: p.Planet.Color,
-                    Planet_Distance_From_Sun: p.Planet.DistanceFromSun,
-                    Planet_Magnitude: p.Planet.Magnitude,
-                    Planet_Type: p.Planet.Type,
-                    Planet_Diameter: p.Planet.Diameter,
-                    Planet_Number_of_Moons: p.Planet.NumberOfMoons,
-                    Planet_Mass: p.Planet.Mass,
-                    Match_Score: p.Score,
-                    Match_Percentage: p.MatchPercentage,
-                    Weather_Visibility_Chance: p.VisibilityChance,
-                    Weather_Explanation: p.ChanceReason
-                }));
-
-                const cleanMoons = (finalResults.Moons || []).map(m => ({
-                    Moon_ID: m.Moon.Id,
-                    Moon_Name: m.Moon.Name,
-                    Parent_Planet_Name: m.Parent,
-                    Moon_Color: m.Moon.Color,
-                    Moon_Diameter: m.Moon.Diameter,
-                    Moon_Mass: m.Moon.Mass,
-                    Match_Score: m.Score,
-                    Match_Percentage: m.MatchPercentage,
-                    Weather_Visibility_Chance: m.VisibilityChance,
-                    Weather_Explanation: m.ChanceReason
-                }));
+                const rawResults = JSON.parse(jsonPart);
 
                 res.json({
                     success: true,
+                    active_layers: layers,
                     results: {
-                        Stars: cleanStars,
-                        Planets: cleanPlanets,
-                        Moons: cleanMoons
+                        Stars: (rawResults.Stars || []).map(mapStarResult),
+                        Planets: (rawResults.Planets || []).map(mapPlanetResult),
+                        Moons: (rawResults.Moons || []).map(mapMoonResult)
                     }
                 });
 
             } catch (err) {
-                console.error("Parse Error:", err);
                 res.status(500).json({ error: "Failed to process engine results", message: err.message });
             }
         });
-        // 🚀 DEPLOYMENT CHANGE END
 
     } catch (err) {
-        console.error("General runLayer1Full Error:", err);
-        res.status(500).json({ error: err.message });
+        if (!res.headersSent) res.status(500).json({ error: err.message });
     }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 🌟 THE ENDPOINTS
+// ═══════════════════════════════════════════════════════════════
+
+// L1 Only (Existing)
+exports.runLayer1Full = async (req, res) => {
+    return executeEngine(req, res, { l2: false, l3: false, l4: false, l5: false });
+};
+
+// L1 + L2 Trending (New!)
+exports.runLayer1And2 = async (req, res) => {
+    return executeEngine(req, res, { l2: true, l3: false, l4: false, l5: false });
+};
+
+// L1 + L3 Matrix Factorization
+exports.runLayer1And3 = async (req, res) => {
+    return executeEngine(req, res, { l2: false, l3: true, l4: false, l5: false });
 };

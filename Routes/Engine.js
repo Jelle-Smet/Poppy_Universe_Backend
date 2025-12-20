@@ -15,7 +15,12 @@ router.get('/l3', protect, engineController.getLayer3Data);
 router.get('/l4', protect, engineController.getLayer4Data);
 
 // runners
+// Layer 1
 router.post('/run-l1', protect, engineController.runLayer1Full);
+// Layer 1 + Layer 2
+router.post('/run-l1-l2', protect, engineController.runLayer1And2);
+// Layer 1 + Layer 3
+router.post('/run-l1-l3', protect, engineController.runLayer1And3);
 
 
 module.exports = router;
