@@ -272,19 +272,35 @@ exports.getLayer3Data = async (req, res) => {
 
 /**
  * 🧠 GET LAYER 4 (NEURAL NETWORK)
+ * Hybrid function: Works for both direct API calls and Engine execution.
  */
 exports.getLayer4Data = async (req, res) => {
     try {
-        const l4Data = await mlController.runLayer4Model(null, null);
+        // Handle ID-only calls from the engine vs standard req/res calls
+        const userId = (typeof req !== 'object') ? req : (req.userId || req.body?.userId);
+
+        if (!userId) {
+            throw new Error("User ID is required for Layer 4 NN personalization.");
+        }
+
+        const l4Data = await mlController.runLayer4Model(userId, null);
         
-        res.json({
-            success: true,
-            count: l4Data?.length || 0,
-            data: l4Data
-        });
+        // If called by the browser/Postman
+        if (res) {
+            return res.json({
+                success: true,
+                count: l4Data?.length || 0,
+                data: l4Data
+            });
+        }
+
+        // If called internally by executeEngine
+        return { success: true, data: l4Data };
+
     } catch (err) {
         console.error("Layer 4 Engine Call Error:", err);
-        res.status(500).json({ success: false, error: err.message });
+        if (res) return res.status(500).json({ success: false, error: err.message });
+        throw err;
     }
 };
 
@@ -304,73 +320,65 @@ const safeParseFloat = (val) => {
 // ═══════════════════════════════════════════════════════════════
 // 🛠️ MAPPING HELPERS (Flattens C# nested data into clean JSON)
 // ═══════════════════════════════════════════════════════════════
-const mapStarResult = (s) => ({
-    Star_ID: s.Star.Id,
-    Star_Name: s.Star.Name,
-    Star_Source: s.Star.Source,
-    Star_SpType: s.Star.SpectralType,
-    Star_Evol_Category: s.Star.Star_Evol_Category || "unknown",
-    Star_Age: s.Star.Age,
-    Star_Teff: s.Star.Teff,
-    Star_Luminosity: s.Star.Luminosity,
-    Star_Mass: s.Star.Mass,
-    Star_Radius: s.Star.Radius,
-    Star_Distance: s.Star.Distance,
-    // Positioning Data
-    Altitude: s.Altitude, 
-    Azimuth: s.Azimuth,
-    Is_Visible: s.IsVisible,
-    // Engine Results
-    Match_Score: s.Score,
-    Match_Percentage: s.MatchPercentage,
-    // 📈 Boost Data
-    Boost_Amount_Pct: safeParseFloat(s.BoostDescription),
-    Weather_Visibility_Chance: s.VisibilityChance,
-    Weather_Explanation: s.ChanceReason
-});
 
-const mapPlanetResult = (p) => ({
-    Planet_ID: p.Planet.Id,
-    Planet_Name: p.Planet.Name,
-    Planet_Color: p.Planet.Color,
-    Planet_Distance_From_Sun: p.Planet.DistanceFromSun,
-    Planet_Magnitude: p.Planet.Magnitude,
-    Planet_Type: p.Planet.Type,
-    Planet_Diameter: p.Planet.Diameter,
-    Planet_Number_of_Moons: p.Planet.NumberOfMoons,
-    Planet_Mass: p.Planet.Mass,
-    // Positioning Data
-    Altitude: p.Altitude,
-    Azimuth: p.Azimuth,
-    Is_Visible: p.IsVisible,
-    // Engine Results
-    Match_Score: p.Score,
-    Match_Percentage: p.MatchPercentage,
-    // 📈 Boost Data
-    Boost_Amount_Pct: safeParseFloat(p.BoostDescription),
-    Weather_Visibility_Chance: p.VisibilityChance,
-    Weather_Explanation: p.ChanceReason
-});
+const mapStarResult = (s) => {
+    const isL5 = s.Layer5_FinalRank !== undefined;
+    return {
+        Star_ID: isL5 ? s.Object_ID : s.Star?.Id,
+        Star_Name: isL5 ? s.Object_Name : s.Star?.Name,
+        Star_SpType: isL5 ? s.SpectralType : s.Star?.SpectralType,
+        Altitude: s.Altitude,
+        Azimuth: s.Azimuth,
+        Is_Visible: s.IsVisible,
+        // ✨ GA Score is a 'Consensus Score' (Lower is better)
+        Match_Score: isL5 ? s.Layer5_FinalScore : s.Score,
+        Match_Percentage: s.MatchPercentage,
+        GA_Rank: isL5 ? s.Layer5_FinalRank + 1 : null,
+        Rank_Summary: isL5 ? s.GASummary : "Standard Ranking",
+        // ✨ FIX: Hide boost for Layer 5
+        Boost_Amount_Pct: isL5 ? 0 : safeParseFloat(s.BoostDescription),
+        Weather_Visibility_Chance: s.VisibilityChance,
+        Weather_Explanation: s.ChanceReason
+    };
+};
 
-const mapMoonResult = (m) => ({
-    Moon_ID: m.Moon.Id,
-    Moon_Name: m.Moon.Name,
-    Parent_Planet_Name: m.Parent,
-    Moon_Color: m.Moon.Color,
-    Moon_Diameter: m.Moon.Diameter,
-    Moon_Mass: m.Moon.Mass,
-    // Positioning Data
-    Altitude: m.Altitude,
-    Azimuth: m.Azimuth,
-    Is_Visible: m.IsVisible,
-    // Engine Results
-    Match_Score: m.Score,
-    Match_Percentage: m.MatchPercentage,
-    // 📈 Boost Data
-    Boost_Amount_Pct: safeParseFloat(m.BoostDescription),
-    Weather_Visibility_Chance: m.VisibilityChance,
-    Weather_Explanation: m.ChanceReason
-});
+const mapPlanetResult = (p) => {
+    const isL5 = p.Layer5_FinalRank !== undefined;
+    return {
+        Planet_ID: isL5 ? p.Object_ID : p.Planet?.Id,
+        Planet_Name: isL5 ? p.Object_Name : p.Planet?.Name,
+        Planet_Type: isL5 ? p.Type : p.Planet?.Type,
+        Altitude: p.Altitude,
+        Azimuth: p.Azimuth,
+        Is_Visible: p.IsVisible,
+        Match_Score: isL5 ? p.Layer5_FinalScore : p.Score,
+        Match_Percentage: p.MatchPercentage,
+        GA_Rank: isL5 ? p.Layer5_FinalRank + 1 : null,
+        Rank_Summary: isL5 ? p.GASummary : "Standard Ranking",
+        Boost_Amount_Pct: isL5 ? 0 : safeParseFloat(p.BoostDescription), // ✨ Hide boost
+        Weather_Visibility_Chance: p.VisibilityChance,
+        Weather_Explanation: p.ChanceReason
+    };
+};
+
+const mapMoonResult = (m) => {
+    const isL5 = m.Layer5_FinalRank !== undefined;
+    return {
+        Moon_ID: isL5 ? m.Object_ID : m.Moon?.Id,
+        Moon_Name: isL5 ? m.Object_Name : m.Moon?.Name,
+        Parent_Planet: m.Parent,
+        Altitude: m.Altitude,
+        Azimuth: m.Azimuth,
+        Is_Visible: m.IsVisible,
+        Match_Score: isL5 ? m.Layer5_FinalScore : m.Score,
+        Match_Percentage: m.MatchPercentage,
+        GA_Rank: isL5 ? m.Layer5_FinalRank + 1 : null,
+        Rank_Summary: isL5 ? m.GASummary : "Standard Ranking",
+        Boost_Amount_Pct: isL5 ? 0 : safeParseFloat(m.BoostDescription), // ✨ Hide boost
+        Weather_Visibility_Chance: m.VisibilityChance,
+        Weather_Explanation: m.ChanceReason
+    };
+};
 
 // ═══════════════════════════════════════════════════════════════
 // 🌌 THE MASTER ENGINE EXECUTOR
@@ -420,12 +428,16 @@ const executeEngine = async (req, res, layers = { l2: false, l3: false, l4: fals
                 : matrixResponse.data;
         }
 
-        // 🕒 LAYER 4: USER HISTORY / DISCOVERY
+        // 🕒 LAYER 4: USER HISTORY / NEURAL NETWORK
         if (layers.l4) {
             console.log(`Layer 4 requested for User: ${userId}`);
-            // This is where you'll call your L4 data fetcher
-            // const historyResponse = await exports.getLayer4Data(userId);
-            // enginePayload.Layer4Data = historyResponse.data;
+            // ✨ CALLING THE NEW HYBRID FUNCTION
+            const historyResponse = await exports.getLayer4Data(userId);
+            
+            // Ensure C# gets a single object, not an array
+            enginePayload.Layer4Data = Array.isArray(historyResponse.data) 
+                ? historyResponse.data[0] 
+                : historyResponse.data;
         }
 
         // 3️⃣ Spawn C# Engine
@@ -489,7 +501,7 @@ exports.runLayer1Full = async (req, res) => {
     return executeEngine(req, res, { l2: false, l3: false, l4: false, l5: false });
 };
 
-// L1 + L2 Trending (New!)
+// L1 + L2 Trending 
 exports.runLayer1And2 = async (req, res) => {
     return executeEngine(req, res, { l2: true, l3: false, l4: false, l5: false });
 };
@@ -497,4 +509,14 @@ exports.runLayer1And2 = async (req, res) => {
 // L1 + L3 Matrix Factorization
 exports.runLayer1And3 = async (req, res) => {
     return executeEngine(req, res, { l2: false, l3: true, l4: false, l5: false });
+};
+
+// L1 + L4 Neural Network
+exports.runLayer1And4 = async (req, res) => {
+    return executeEngine(req, res, { l2: false, l3: false, l4: true, l5: false });
+};
+
+// 🔥 THE TOTAL UNIVERSE CALL (L1 through L5)
+exports.runFullUniverseOptimization = async (req, res) => {
+    return executeEngine(req, res, { l2: true, l3: true, l4: true, l5: true });
 };

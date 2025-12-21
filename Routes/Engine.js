@@ -21,6 +21,10 @@ router.post('/run-l1', protect, engineController.runLayer1Full);
 router.post('/run-l1-l2', protect, engineController.runLayer1And2);
 // Layer 1 + Layer 3
 router.post('/run-l1-l3', protect, engineController.runLayer1And3);
+// Layer 1 + Layer 4
+router.post('/run-l1-l4', protect, engineController.runLayer1And4);
+// Layer 1 --> 5
+router.post('/run-l1-l5', protect, engineController.runFullUniverseOptimization);
 
 
 module.exports = router;
