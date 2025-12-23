@@ -36,6 +36,9 @@ app.use('/api/ml', require('./Routes/ML'));
 // Engine
 app.use('/api/engine', require('./Routes/Engine'));
 
+// Object Scanner
+app.use('/api/object_scanner', require('./Routes/Object_Scanner'));
+
 // 🔑 Auth routes
 app.use('/api', require('./Routes/Users'));
 
