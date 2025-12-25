@@ -116,10 +116,44 @@ const getStarEncyclopedia = async (req, res) => {
   }
 };
 
+// starsController.js
+const claimStar = async (req, res) => {
+  try {
+    const starId = req.params.id;
+    
+    // MATCHING YOUR PATTERN: Use req.userId
+    const userId = req.userId; 
+
+    if (!userId) {
+      return res.status(401).json({ message: "User authentication failed." });
+    }
+
+    // 1. Fetch the star to check ownership
+    const checkQuery = "SELECT Owner_ID FROM Stars WHERE Star_ID = ?";
+    const results = await db.getQuery(checkQuery, [starId]);
+
+    if (results.length === 0) return res.status(404).json({ message: "Star not found." });
+
+    // 2. Prevent buying if owner already exists
+    if (results[0].Owner_ID !== null) {
+      return res.status(400).json({ message: "This celestial body is already claimed." });
+    }
+
+    // 3. Update the owner
+    const updateQuery = "UPDATE Stars SET Owner_ID = ? WHERE Star_ID = ?";
+    await db.getQuery(updateQuery, [userId, starId]);
+
+    return res.json({ message: "Ownership confirmed." });
+  } catch (err) {
+    console.error('Error claiming star:', err);
+    return res.status(500).json({ message: "Registry update failed." });
+  }
+};
 
 // ---------------- EXPORT ----------------
 module.exports = {
   getMyStars,
   getStarById,
   getStarEncyclopedia,
+  claimStar
 };

@@ -12,4 +12,7 @@ router.get('/mystars', protect, starsController.getMyStars);
 // ---------------- STAR DETAIL ----------------
 router.get('/:id', protect, starsController.getStarById);
 
+// ---------------- STAR Purhcase ----------------
+router.post('/purchase/:id', protect, starsController.claimStar);
+
 module.exports = router;
