@@ -1,22 +1,12 @@
-// db.js
 const mysql = require('mysql2/promise');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
-
-/**
- * 🛠️ LOCAL DEV & DEPLOYMENT TIPS:
- * * 1. LOCAL WORK: Keep your .env file as is. This script detects if you're local
- * and will skip SSL requirements so you don't get connection errors.
- * * 2. DB_PORT: I added a fallback to 3306 just in case it's missing from .env.
- * * 3. PRODUCTION DEPLOY: 
- * - In your hosting dashboard, set NODE_ENV to 'production'.
- * - This will trigger the 'ssl' block below which is required by most 
- * cloud DBs (like TiDB, AWS, or PlanetScale).
- * - If your production DB doesn't use SSL, just change 'rejectUnauthorized' to false.
- */
 
 class Database {
     constructor() {
-        this.pool = mysql.createPool({
+        // 1. Setup default pool options
+        const poolConfig = {
             host: process.env.db_host,
             user: process.env.db_user,
             password: process.env.db_pass,
@@ -25,13 +15,28 @@ class Database {
             waitForConnections: true,
             connectionLimit: 10,
             queueLimit: 0,
-            
-            // ✨ HYBRID SSL CHECK
-            // If process.env.NODE_ENV is not 'production', it returns 'false' and stays local-friendly.
-            ssl: process.env.NODE_ENV === 'production' ? {
-                rejectUnauthorized: true 
-            } : false
-        });
+        };
+
+        // 2. Handle SSL (Cloud vs Local)
+        // If DB_CA_PATH exists in .env, we assume we need SSL (Aiven)
+        if (process.env.DB_CA_PATH) {
+            try {
+                const caPath = path.resolve(process.env.DB_CA_PATH);
+                poolConfig.ssl = {
+                    ca: fs.readFileSync(caPath),
+                    rejectUnauthorized: true
+                };
+                console.log('🛡️  SSL Configured for Database');
+            } catch (err) {
+                console.error('❌ Failed to read SSL CA file:', err.message);
+                // Fallback to no SSL if file is missing (good for local dev)
+                poolConfig.ssl = false;
+            }
+        } else {
+            poolConfig.ssl = false;
+        }
+
+        this.pool = mysql.createPool(poolConfig);
     }
 
     async getQuery(sql, params = []) {
@@ -39,7 +44,6 @@ class Database {
             const [rows] = await this.pool.execute(sql, params);
             return rows;
         } catch (error) {
-            // Detailed error logging to help you debug during dev!
             console.error(`❌ DB Query Failed: [${sql}] | Error: ${error.message}`);
             throw error;
         }
@@ -55,6 +59,4 @@ class Database {
     }
 }
 
-// We export the CLASS so you can instantiate it where needed, 
-// or you can do 'module.exports = new Database();' to share one pool.
 module.exports = Database;
