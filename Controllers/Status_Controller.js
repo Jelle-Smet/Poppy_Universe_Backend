@@ -1,21 +1,25 @@
-// Controllers/Status_Controller.js
-const db = new (require('../Classes/database'))(); // Re-use your DB class
+// We create the instance exactly like your working Maintenance Controller
+const db = new (require('../Classes/database'))(); 
 
 exports.getSystemStatus = async (req, res) => {
-    let dbStatus = 'Online'; // Assume online first
+    console.log("🔍 System Status Check triggered...");
+    
+    let dbStatus = 'Online'; 
 
     try {
-        // Attempt a simple, fast query. This line will THROW an error 
-        // if the database connection fails (State 2).
-        await db.getQuery("SELECT 1 + 1 AS result"); 
+        // We use the exact same method that worked in your heartbeat: getQuery
+        // We 'await' it to ensure the code waits for the database to respond
+        await db.getQuery("SELECT 1"); 
+        console.log("✅ Database is responsive.");
     } catch (error) {
-        console.error('Database check failed:', error.message);
-        dbStatus = 'Offline'; // Database failed the check
+        // If the query fails, we catch the error and mark it as offline
+        console.error('❌ Database check failed:', error.message);
+        dbStatus = 'Offline'; 
     }
 
-    // THIS IS THE CORRECT RESPONSE FORMAT
-    res.status(200).json({
-        serviceStatus: 'Online',      // Express server is running
-        databaseStatus: dbStatus,     // 'Online' or 'Offline' based on the check
+    // Return the response in the format you wanted
+    return res.status(200).json({
+        serviceStatus: 'Online',      // The Express server itself is running
+        databaseStatus: dbStatus      // 'Online' or 'Offline'
     });
 };
