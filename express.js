@@ -3,50 +3,52 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+// 🔗 1. IMPORT MAINTENANCE ROUTES
+// Ensure this file exists in your Routes folder!
+const maintenanceRoutes = require('./Routes/Maintenance_Routes');
+
 const app = express();
+
+// 🛠️ 2. MIDDLEWARE
 app.use(cors());
 app.use(express.json());
 
-// Status route
+// 🌍 3. STATUS & DEFAULT ROUTES
 app.use('/status', require('./Routes/Status'));
 
-// Default route
 app.get('/', (req, res) => {
-    res.send('Backend is running!');
+    res.send('🌌 Poppy Universe Backend is Online and Soaring!');
 });
 
-// stars
+// 🔭 4. CELESTIAL & ENGINE ROUTES
 app.use('/api/stars', require('./Routes/Stars'));
-
-// Interactions
-app.use('/api/interactions', require('./Routes/Interactions'));
-
-// Likes
-app.use('/api/likes', require('./Routes/Like'));
-
-// Planets
 app.use('/api/planets', require('./Routes/Planets'));
-
-// Moons
 app.use('/api/moons', require('./Routes/Moons'));
-
-// ML 
-app.use('/api/ml', require('./Routes/ML'));
-
-// Engine
-app.use('/api/engine', require('./Routes/Engine'));
-
-// Object Scanner
+app.use('/api/objects', require('./Routes/Object'));
 app.use('/api/object_scanner', require('./Routes/Object_Scanner'));
 
-// Object 
-app.use('/api/objects', require('./Routes/Object'));
+// 🧠 5. ENGINE & ML ROUTES
+app.use('/api/ml', require('./Routes/ML'));
+app.use('/api/engine', require('./Routes/Engine'));
 
-// maintenence
+// 👤 6. USER & INTERACTION ROUTES
+app.use('/api/interactions', require('./Routes/Interactions'));
+app.use('/api/likes', require('./Routes/Like'));
+app.use('/api', require('./Routes/Users')); // 🔑 Auth routes
+
+// 💓 7. MAINTENANCE (THE HEARTBEAT)
+// This is the endpoint UptimeRobot will hit to keep the universe awake
 app.use('/api/maintenance', maintenanceRoutes);
 
-// 🔑 Auth routes
-app.use('/api', require('./Routes/Users'));
-
+// 🚀 8. RENDER DEPLOYMENT FIX
+// We use '0.0.0.0' and process.env.PORT to ensure Render can reach the app
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`
+    =============================================
+    🚀 POPPY UNIVERSE BACKEND IS LIVE
+    📡 Listening on Port: ${PORT}
+    🔗 Maintenance: /api/maintenance/heartbeat
+    =============================================
+    `);
+});
