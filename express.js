@@ -14,7 +14,7 @@ app.use(cors());
 app.use(express.json());
 
 // 🌍 3. STATUS & DEFAULT ROUTES
-app.use('/status', require('./Routes/Status'));
+app.use('api/status', require('./Routes/Status'));
 
 app.get('/', (req, res) => {
     res.send('🌌 Poppy Universe Backend is Online and Soaring!');
