@@ -42,6 +42,9 @@ app.use('/api/object_scanner', require('./Routes/Object_Scanner'));
 // Object 
 app.use('/api/objects', require('./Routes/Object'));
 
+// maintenence
+app.use('/api/maintenance', maintenanceRoutes);
+
 // 🔑 Auth routes
 app.use('/api', require('./Routes/Users'));
 

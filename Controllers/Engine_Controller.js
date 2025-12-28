@@ -306,13 +306,12 @@ exports.getLayer4Data = async (req, res) => {
 
 
 // --------------------------------------
-// Run Engine Endpoints
-//---------------------------------------
+// Run Engine Endpoints (Cloud Version)
+// --------------------------------------
 
 // Helper to safely extract only the number from a string like "2.5%" or "Boosted: 10"
 const safeParseFloat = (val) => {
     if (!val) return 0;
-    // Regex: find the first sequence of numbers and optional decimal point
     const match = String(val).match(/[-+]?([0-9]*\.[0-9]+|[0-9]+)/);
     return match ? parseFloat(match[0]) : 0;
 };
@@ -322,61 +321,60 @@ const safeParseFloat = (val) => {
 // ═══════════════════════════════════════════════════════════════
 
 const mapStarResult = (s) => {
-    const isL5 = s.Layer5_FinalRank !== undefined;
+    // ✨ FIX: Check for lowercase 'layer5_FinalRank'
+    const isL5 = s.layer5_FinalRank !== undefined; 
     return {
-        Star_ID: isL5 ? s.Object_ID : s.Star?.Id,
-        Star_Name: isL5 ? s.Object_Name : s.Star?.Name,
-        Star_SpType: isL5 ? s.SpectralType : s.Star?.SpectralType,
-        Altitude: s.Altitude,
-        Azimuth: s.Azimuth,
-        Is_Visible: s.IsVisible,
-        // ✨ GA Score is a 'Consensus Score' (Lower is better)
-        Match_Score: isL5 ? s.Layer5_FinalScore : s.Score,
-        Match_Percentage: s.MatchPercentage,
-        GA_Rank: isL5 ? s.Layer5_FinalRank + 1 : null,
-        Rank_Summary: isL5 ? s.GASummary : "Standard Ranking",
-        // ✨ FIX: Hide boost for Layer 5
-        Boost_Amount_Pct: isL5 ? 0 : safeParseFloat(s.BoostDescription),
-        Weather_Visibility_Chance: s.VisibilityChance,
-        Weather_Explanation: s.ChanceReason
+        Star_ID: isL5 ? s.object_ID : s.star?.id,
+        Star_Name: isL5 ? s.object_Name : s.star?.name,
+        Star_SpType: isL5 ? s.spectralType : s.star?.spectralType,
+        Altitude: s.altitude,
+        Azimuth: s.azimuth,
+        Is_Visible: s.isVisible,
+        Match_Score: isL5 ? s.layer5_FinalScore : s.score,
+        Match_Percentage: s.matchPercentage,
+        GA_Rank: isL5 ? s.layer5_FinalRank + 1 : null,
+        Rank_Summary: isL5 ? s.gaSummary : "Standard Ranking",
+        Boost_Amount_Pct: isL5 ? 0 : safeParseFloat(s.boostDescription),
+        Weather_Visibility_Chance: s.visibilityChance,
+        Weather_Explanation: s.chanceReason
     };
 };
 
 const mapPlanetResult = (p) => {
-    const isL5 = p.Layer5_FinalRank !== undefined;
+    const isL5 = p.layer5_FinalRank !== undefined;
     return {
-        Planet_ID: isL5 ? p.Object_ID : p.Planet?.Id,
-        Planet_Name: isL5 ? p.Object_Name : p.Planet?.Name,
-        Planet_Type: isL5 ? p.Type : p.Planet?.Type,
-        Altitude: p.Altitude,
-        Azimuth: p.Azimuth,
-        Is_Visible: p.IsVisible,
-        Match_Score: isL5 ? p.Layer5_FinalScore : p.Score,
-        Match_Percentage: p.MatchPercentage,
-        GA_Rank: isL5 ? p.Layer5_FinalRank + 1 : null,
-        Rank_Summary: isL5 ? p.GASummary : "Standard Ranking",
-        Boost_Amount_Pct: isL5 ? 0 : safeParseFloat(p.BoostDescription), // ✨ Hide boost
-        Weather_Visibility_Chance: p.VisibilityChance,
-        Weather_Explanation: p.ChanceReason
+        Planet_ID: isL5 ? p.object_ID : p.planet?.id,
+        Planet_Name: isL5 ? p.object_Name : p.planet?.name,
+        Planet_Type: isL5 ? p.type : p.planet?.type,
+        Altitude: p.altitude,
+        Azimuth: p.azimuth,
+        Is_Visible: p.isVisible,
+        Match_Score: isL5 ? p.layer5_FinalScore : p.score,
+        Match_Percentage: p.matchPercentage,
+        GA_Rank: isL5 ? p.layer5_FinalRank + 1 : null,
+        Rank_Summary: isL5 ? p.gaSummary : "Standard Ranking",
+        Boost_Amount_Pct: isL5 ? 0 : safeParseFloat(p.boostDescription),
+        Weather_Visibility_Chance: p.visibilityChance,
+        Weather_Explanation: p.chanceReason
     };
 };
 
 const mapMoonResult = (m) => {
-    const isL5 = m.Layer5_FinalRank !== undefined;
+    const isL5 = m.layer5_FinalRank !== undefined;
     return {
-        Moon_ID: isL5 ? m.Object_ID : m.Moon?.Id,
-        Moon_Name: isL5 ? m.Object_Name : m.Moon?.Name,
-        Parent_Planet: m.Parent,
-        Altitude: m.Altitude,
-        Azimuth: m.Azimuth,
-        Is_Visible: m.IsVisible,
-        Match_Score: isL5 ? m.Layer5_FinalScore : m.Score,
-        Match_Percentage: m.MatchPercentage,
-        GA_Rank: isL5 ? m.Layer5_FinalRank + 1 : null,
-        Rank_Summary: isL5 ? m.GASummary : "Standard Ranking",
-        Boost_Amount_Pct: isL5 ? 0 : safeParseFloat(m.BoostDescription), // ✨ Hide boost
-        Weather_Visibility_Chance: m.VisibilityChance,
-        Weather_Explanation: m.ChanceReason
+        Moon_ID: isL5 ? m.object_ID : m.moon?.id,
+        Moon_Name: isL5 ? m.object_Name : m.moon?.name,
+        Parent_Planet: m.parent,
+        Altitude: m.altitude,
+        Azimuth: m.azimuth,
+        Is_Visible: m.isVisible,
+        Match_Score: isL5 ? m.layer5_FinalScore : m.score,
+        Match_Percentage: m.matchPercentage,
+        GA_Rank: isL5 ? m.layer5_FinalRank + 1 : null,
+        Rank_Summary: isL5 ? m.gaSummary : "Standard Ranking",
+        Boost_Amount_Pct: isL5 ? 0 : safeParseFloat(m.boostDescription),
+        Weather_Visibility_Chance: m.visibilityChance,
+        Weather_Explanation: m.chanceReason
     };
 };
 
@@ -385,18 +383,15 @@ const mapMoonResult = (m) => {
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * 🚀 MASTER ENGINE EXECUTOR
- * Layers: L1 (Base), L2 (Trending), L3 (Matrix Factorization),
+ * 🚀 MASTER ENGINE EXECUTOR (Cloud Edition)
  */
 const executeEngine = async (req, res, layers = { l2: false, l3: false, l4: false, l5: false }) => {
     try {
-        // 1️⃣ Gather Base Data (L1 Fuel)
+        // 1️⃣ Gather Base Data
         const poolData = await exports.getCelestialPool(null, null); 
         const userConfig = await exports.getUserConfig(req, null); 
 
-        // ✨ GLOBAL ID: Define it here so all layers can use it
         const userId = userConfig.data?.ID;
-
         if (!userId) {
             return res.status(401).json({ success: false, message: "Unauthorized: No explorer ID found." });
         }
@@ -408,87 +403,65 @@ const executeEngine = async (req, res, layers = { l2: false, l3: false, l4: fals
             Config: layers, 
             Layer2Data: null,
             Layer3Data: null,
-            Layer4Data: null // ✨ Placeholder for Layer 4
+            Layer4Data: null 
         };
 
-        // 📈 LAYER 2: TRENDING DATA
+        // Populate optional layers
         if (layers.l2) {
             const trendingResponse = await exports.getLayer2Data(null, null);
             enginePayload.Layer2Data = trendingResponse.data;
         }
 
-        // 🧬 LAYER 3: PERSONALIZATION MATRIX
         if (layers.l3) {
-            // Pass the globally defined userId
             const matrixResponse = await exports.getLayer3Data(userId);
-            
-            // Ensure C# gets a single object, not an array
             enginePayload.Layer3Data = Array.isArray(matrixResponse.data) 
                 ? matrixResponse.data[0] 
                 : matrixResponse.data;
         }
 
-        // 🕒 LAYER 4: USER HISTORY / NEURAL NETWORK
         if (layers.l4) {
-            console.log(`Layer 4 requested for User: ${userId}`);
-            // ✨ CALLING THE NEW HYBRID FUNCTION
             const historyResponse = await exports.getLayer4Data(userId);
-            
-            // Ensure C# gets a single object, not an array
             enginePayload.Layer4Data = Array.isArray(historyResponse.data) 
                 ? historyResponse.data[0] 
                 : historyResponse.data;
         }
 
-        // 3️⃣ Spawn C# Engine
-        const enginePath = path.resolve(__dirname, '../../../Recommendation_Engine/Poppy_Universe_Engine/bin/Debug/net8.0/Poppy_Universe_Engine.exe');
-        const engine = spawn(enginePath);
+        // 3️⃣ Send to Cloud C# Engine via HTTP POST
+        // Make sure ENGINE_URL is in your .env (e.g., https://poppy-engine.onrender.com)
+        const cloudUrl = `${process.env.ENGINE_URL}/run-engine`;
+        console.log(`🌐 Dispatching payload to Cloud Engine: ${cloudUrl}`);
 
-        let output = '';
-        let engineStderr = '';
-
-        engine.on('error', (err) => {
-            console.error("❌ FAILED TO START ENGINE:", err);
-            if (!res.headersSent) res.status(500).json({ error: "Failed to start C# engine." });
+        const response = await fetch(cloudUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(enginePayload)
         });
 
-        engine.stdout.on('data', (data) => { output += data.toString(); });
-        engine.stderr.on('data', (data) => { engineStderr += data.toString(); });
+        if (!response.ok) {
+            const errorMsg = await response.text();
+            throw new Error(`Cloud Engine returned error: ${errorMsg}`);
+        }
 
-        // 4️⃣ Pipe the data to C# via stdin
-        engine.stdin.write(JSON.stringify(enginePayload));
-        engine.stdin.end();
+        // 4️⃣ Receive Results
+        const rawResults = await response.json();
 
-        // 5️⃣ On finish, clean up and send results
-        engine.on('close', (code) => {
-            if (code !== 0) {
-                return res.status(500).json({ error: "Engine crashed", details: engineStderr });
-            }
-
-            try {
-                const marker = "---JSON_START---";
-                if (!output.includes(marker)) throw new Error("JSON marker missing.");
-
-                const jsonPart = output.substring(output.indexOf(marker) + marker.length).trim();
-                const rawResults = JSON.parse(jsonPart);
-
-                res.json({
-                    success: true,
-                    active_layers: layers,
-                    results: {
-                        Stars: (rawResults.Stars || []).map(mapStarResult),
-                        Planets: (rawResults.Planets || []).map(mapPlanetResult),
-                        Moons: (rawResults.Moons || []).map(mapMoonResult)
-                    }
-                });
-
-            } catch (err) {
-                res.status(500).json({ error: "Failed to process engine results", message: err.message });
+        // 5️⃣ Map and Return (Using lowercase property names from C# JSON)
+        return res.json({
+            success: true,
+            active_layers: layers,
+            results: {
+                // Change rawResults.Stars -> rawResults.stars
+                Stars: (rawResults.stars || []).map(mapStarResult),
+                Planets: (rawResults.planets || []).map(mapPlanetResult),
+                Moons: (rawResults.moons || []).map(mapMoonResult)
             }
         });
 
     } catch (err) {
-        if (!res.headersSent) res.status(500).json({ error: err.message });
+        console.error("❌ CLOUD ENGINE EXECUTION FAILED:", err);
+        if (!res.headersSent) {
+            res.status(500).json({ success: false, error: err.message });
+        }
     }
 };
 
@@ -496,27 +469,22 @@ const executeEngine = async (req, res, layers = { l2: false, l3: false, l4: fals
 // 🌟 THE ENDPOINTS
 // ═══════════════════════════════════════════════════════════════
 
-// L1 Only (Existing)
 exports.runLayer1Full = async (req, res) => {
     return executeEngine(req, res, { l2: false, l3: false, l4: false, l5: false });
 };
 
-// L1 + L2 Trending 
 exports.runLayer1And2 = async (req, res) => {
     return executeEngine(req, res, { l2: true, l3: false, l4: false, l5: false });
 };
 
-// L1 + L3 Matrix Factorization
 exports.runLayer1And3 = async (req, res) => {
     return executeEngine(req, res, { l2: false, l3: true, l4: false, l5: false });
 };
 
-// L1 + L4 Neural Network
 exports.runLayer1And4 = async (req, res) => {
     return executeEngine(req, res, { l2: false, l3: false, l4: true, l5: false });
 };
 
-// 🔥 THE TOTAL UNIVERSE CALL (L1 through L5)
 exports.runFullUniverseOptimization = async (req, res) => {
     return executeEngine(req, res, { l2: true, l3: true, l4: true, l5: true });
 };
