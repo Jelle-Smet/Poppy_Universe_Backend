@@ -150,10 +150,66 @@ const claimStar = async (req, res) => {
   }
 };
 
+// ---------------- GET STARS WITH OWNERS (PROTECTED) ----------------
+const getOwnedStars = async (req, res) => {
+  try {
+    // We only want stars where Owner_ID is NOT NULL
+    // We also apply your "Star Completeness" rule
+    const query = `
+      SELECT 
+        s.Star_ID, 
+        s.Star_Name, 
+        s.Star_SpType, 
+        s.Star_Distance, 
+        s.Star_Luminosity,
+        u.User_Username, 
+        u.User_FN, 
+        u.User_LN
+      FROM Stars s
+      INNER JOIN Users u ON s.Owner_ID = u.User_ID
+      WHERE s.Owner_ID IS NOT NULL
+        AND s.Star_Name IS NOT NULL
+        AND s.Star_Distance IS NOT NULL
+        AND s.Star_Luminosity IS NOT NULL
+      ORDER BY s.Star_ID DESC 
+      LIMIT 50`; 
+
+    const ownedStars = await db.getQuery(query);
+
+    // Format the response
+    const formattedStars = ownedStars.map(star => {
+      // Logic to decide which name to show (Full Name if available, otherwise Username)
+      const displayName = (star.User_FN && star.User_LN) 
+                          ? `${star.User_FN} ${star.User_LN}` 
+                          : star.User_Username;
+      
+      return {
+        starId: star.Star_ID,
+        starName: star.Star_Name,
+        type: star.Star_SpType,
+        distance: star.Star_Distance,
+        luminosity: star.Star_Luminosity,
+        ownerDisplay: displayName
+      };
+    });
+
+    return res.json({ 
+      success: true, 
+      count: formattedStars.length, 
+      stars: formattedStars 
+    });
+
+  } catch (err) {
+    console.error('Error fetching owned stars:', err);
+    return res.status(500).json({ message: 'Failed to access the Protected Wall of Fame' });
+  }
+};
+
 // ---------------- EXPORT ----------------
 module.exports = {
   getMyStars,
   getStarById,
   getStarEncyclopedia,
-  claimStar
+  claimStar,
+  getOwnedStars
 };

@@ -15,4 +15,7 @@ router.get('/:id', protect, starsController.getStarById);
 // ---------------- STAR Purhcase ----------------
 router.post('/purchase/:id', protect, starsController.claimStar);
 
+// ---------------- STAR Owners ----------------
+router.get('/star_owners', protect, starsController.getOwnedStars);
+
 module.exports = router;
