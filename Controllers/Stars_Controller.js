@@ -169,8 +169,6 @@ const getOwnedStars = async (req, res) => {
       INNER JOIN Users u ON s.Owner_ID = u.User_ID
       WHERE s.Owner_ID IS NOT NULL
         AND s.Star_Name IS NOT NULL
-        AND s.Star_Distance IS NOT NULL
-        AND s.Star_Luminosity IS NOT NULL
       ORDER BY s.Star_ID DESC 
       LIMIT 50`; 
 
