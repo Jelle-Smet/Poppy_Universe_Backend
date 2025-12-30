@@ -162,7 +162,7 @@ const getOwnedStars = async (req, res) => {
         s.Star_SpType, 
         s.Star_Distance, 
         s.Star_Luminosity,
-        u.User_Username, 
+        u.User_Name, 
         u.User_FN, 
         u.User_LN
       FROM Stars s
