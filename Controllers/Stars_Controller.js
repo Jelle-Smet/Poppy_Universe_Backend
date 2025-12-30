@@ -153,8 +153,6 @@ const claimStar = async (req, res) => {
 // ---------------- GET STARS WITH OWNERS (PROTECTED) ----------------
 const getOwnedStars = async (req, res) => {
   try {
-    // We only want stars where Owner_ID is NOT NULL
-    // We also apply your "Star Completeness" rule
     const query = `
       SELECT 
         s.Star_ID, 
@@ -162,7 +160,7 @@ const getOwnedStars = async (req, res) => {
         s.Star_SpType, 
         s.Star_Distance, 
         s.Star_Luminosity,
-        u.User_Name, 
+        u.User_Name,  /* Confirmed column name */
         u.User_FN, 
         u.User_LN
       FROM Stars s
@@ -174,12 +172,14 @@ const getOwnedStars = async (req, res) => {
 
     const ownedStars = await db.getQuery(query);
 
-    // Format the response
+    // This helps you see in your deployment logs if the DB actually found rows
+    console.log(`Query executed. Rows found: ${ownedStars.length}`);
+
     const formattedStars = ownedStars.map(star => {
-      // Logic to decide which name to show (Full Name if available, otherwise Username)
+      // Use First Name + Last Name if they exist; otherwise, fallback to User_Name
       const displayName = (star.User_FN && star.User_LN) 
                           ? `${star.User_FN} ${star.User_LN}` 
-                          : star.User_Username;
+                          : star.User_Name;
       
       return {
         starId: star.Star_ID,
