@@ -9,13 +9,13 @@ router.get('/encyclopedia',protect, starsController.getStarEncyclopedia);
 // ---------------- USER STARS ----------------
 router.get('/mystars', protect, starsController.getMyStars);
 
+// ---------------- STAR Owners ----------------
+router.get('/owned_stars', protect, starsController.getOwnedStars);
+
 // ---------------- STAR DETAIL ----------------
 router.get('/:id', protect, starsController.getStarById);
 
 // ---------------- STAR Purhcase ----------------
 router.post('/purchase/:id', protect, starsController.claimStar);
-
-// ---------------- STAR Owners ----------------
-router.get('/owned_stars', protect, starsController.getOwnedStars);
 
 module.exports = router;
