@@ -5,21 +5,41 @@ exports.getSystemStatus = async (req, res) => {
     console.log("🔍 System Status Check triggered...");
     
     let dbStatus = 'Online'; 
+    let aiStatus = 'Online'; // Default to Online, will change if check fails
 
+    // 1. Check Database
     try {
-        // We use the exact same method that worked in your heartbeat: getQuery
-        // We 'await' it to ensure the code waits for the database to respond
         await db.getQuery("SELECT 1"); 
         console.log("✅ Database is responsive.");
     } catch (error) {
-        // If the query fails, we catch the error and mark it as offline
         console.error('❌ Database check failed:', error.message);
         dbStatus = 'Offline'; 
     }
 
-    // Return the response in the format you wanted
+    // 2. Check AI Brain (Hugging Face Space)
+    try {
+        // We ping the Space URL. We use a short timeout so the whole status 
+        // page doesn't hang if HF is being slow.
+        const aiResponse = await fetch(process.env.ML_SERVICE_URL, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${process.env.HF_TOKEN}`
+            },
+            signal: AbortSignal.timeout(5000) // 5 second limit
+        });
+
+        if (!aiResponse.ok) {
+            aiStatus = 'Limited'; 
+        }
+    } catch (error) {
+        console.error('❌ AI Brain check failed:', error.message);
+        aiStatus = 'Offline';
+    }
+
+    // Return the response with all three metrics
     return res.status(200).json({
-        serviceStatus: 'Online',      // The Express server itself is running
-        databaseStatus: dbStatus      // 'Online' or 'Offline'
+        serviceStatus: 'Online',      // Express Server
+        databaseStatus: dbStatus,     // Aiven MySQL
+        aiStatus: aiStatus            // Hugging Face Space
     });
 };
